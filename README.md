@@ -14,3 +14,7 @@ git clone https://github.com/varsfr/go-mux-gorm-todo-api.git
 cd go-mux-gorm-todo-api
 go run main.go
 ```
+
+## Postman Collection
+
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/b0563d0af8fd8a18ba15)
