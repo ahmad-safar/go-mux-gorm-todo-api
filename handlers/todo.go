@@ -51,7 +51,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todos fetched successfully",
-		Data:    &todos,
+		Data:    todos,
 	}, http.StatusOK)
 }
 
@@ -69,7 +69,7 @@ func GetTodo(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo fetched successfully",
-		Data:    &todo,
+		Data:    todo,
 	}, http.StatusOK)
 }
 
@@ -102,7 +102,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo created successfully",
-		Data:    &todo,
+		Data:    todo,
 	}, http.StatusCreated)
 }
 
@@ -128,7 +128,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo updated successfully",
-		Data:    &todo,
+		Data:    todo,
 	}, http.StatusOK)
 }
 
@@ -148,7 +148,7 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo updated successfully",
-		Data:    &todo,
+		Data:    todo,
 	}, http.StatusOK)
 }
 
