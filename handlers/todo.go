@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"go-mux-gorm-todo-api/constants"
 	"go-mux-gorm-todo-api/models"
 	"net/http"
 
@@ -24,7 +25,7 @@ type ErrorResponse struct {
 
 // getDbContext returns the database context
 func getDbContext(r *http.Request) *gorm.DB {
-	return r.Context().Value("db").(*gorm.DB)
+	return r.Context().Value(constants.DbKey{}).(*gorm.DB)
 }
 
 // GetTodos returns all todos
@@ -50,7 +51,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todos fetched successfully",
-		Data:    todos,
+		Data:    &todos,
 	}, http.StatusOK)
 }
 
@@ -60,8 +61,7 @@ func GetTodo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
 	db := getDbContext(r)
-	result := db.First(&todo, params["id"])
-	if result.Error != nil {
+	if result := db.First(&todo, params["id"]); result.Error != nil {
 		sendJSONTodoNotFound(w)
 		return
 	}
@@ -69,7 +69,7 @@ func GetTodo(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo fetched successfully",
-		Data:    todo,
+		Data:    &todo,
 	}, http.StatusOK)
 }
 
@@ -77,8 +77,7 @@ func GetTodo(w http.ResponseWriter, r *http.Request) {
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 
-	err := json.NewDecoder(r.Body).Decode(&todo)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
 		sendJSON(w, ErrorResponse{
 			Status: "error",
 			Error:  "Invalid request body",
@@ -103,7 +102,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo created successfully",
-		Data:    todo,
+		Data:    &todo,
 	}, http.StatusCreated)
 }
 
@@ -112,14 +111,16 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 	params := mux.Vars(r)
 
-	db := getDbContext(r)
-	db.First(&todo, params["id"])
-	err := json.NewDecoder(r.Body).Decode(&todo)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
 		sendJSON(w, ErrorResponse{
 			Status: "error",
 			Error:  "Invalid request body",
 		}, http.StatusBadRequest)
+		return
+	}
+	db := getDbContext(r)
+	if result := db.First(&todo, params["id"]); result.Error != nil {
+		sendJSONTodoNotFound(w)
 		return
 	}
 	db.Save(&todo)
@@ -127,7 +128,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo updated successfully",
-		Data:    todo,
+		Data:    &todo,
 	}, http.StatusOK)
 }
 
@@ -137,8 +138,7 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 	params := mux.Vars(r)
 
 	db := getDbContext(r)
-	result := db.First(&todo, params["id"])
-	if result.Error != nil {
+	if result := db.First(&todo, params["id"]); result.Error != nil {
 		sendJSONTodoNotFound(w)
 		return
 	}
@@ -148,7 +148,7 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 	sendJSON(w, SuccessResponse{
 		Status:  "success",
 		Message: "Todo updated successfully",
-		Data:    todo,
+		Data:    &todo,
 	}, http.StatusOK)
 }
 
@@ -174,8 +174,7 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		sendJSONTodoNotFound(w)
 		return
 	}
-	result = result.Delete(&todo)
-	if result.Error != nil {
+	if result = result.Delete(&todo); result.Error != nil {
 		sendJSONTodoNotFound(w)
 	}
 

@@ -3,6 +3,7 @@ package main
 // use gorilla mux
 import (
 	"context"
+	"go-mux-gorm-todo-api/constants"
 	"go-mux-gorm-todo-api/handlers"
 	"go-mux-gorm-todo-api/models"
 	"log"
@@ -34,7 +35,7 @@ func main() {
 
 func dbMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), "db", DB)
+		ctx := context.WithValue(r.Context(), constants.DbKey{}, DB)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
