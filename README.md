@@ -6,14 +6,13 @@ This is a simple REST API built with Go, Mux and GORM.
 
 ```bash
 git clone https://github.com/varsfr/go-mux-gorm-todo-api.git
+cd go-mux-gorm-todo-api
+go mod tidy
 ```
 
 ## Usage
 
 ```bash
-cd go-mux-gorm-todo-api
-go mod tidy
-
 go run main.go
 ```
 
