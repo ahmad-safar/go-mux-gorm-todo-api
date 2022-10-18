@@ -10,19 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type Data interface{}
-
-type SuccessResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
-	Data    Data   `json:"data"`
-}
-
-type ErrorResponse struct {
-	Status string `json:"status"`
-	Error  string `json:"error"`
-}
-
 // getDbContext returns the database context
 func getDbContext(r *http.Request) *gorm.DB {
 	return r.Context().Value(constants.DbKey{}).(*gorm.DB)
@@ -48,11 +35,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 		db.Where("completed = ?", false).Find(&todos)
 	}
 
-	sendJSON(w, SuccessResponse{
-		Status:  "success",
-		Message: "Todos fetched successfully",
-		Data:    todos,
-	}, http.StatusOK)
+	respondWithJSON(w, http.StatusOK, "Todos fetched successfully", &todos)
 }
 
 // GetTodo returns a single todo
@@ -61,16 +44,12 @@ func GetTodo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
 	db := getDbContext(r)
-	if result := db.First(&todo, params["id"]); result.Error != nil {
-		sendJSONTodoNotFound(w)
+	if err := db.First(&todo, params["id"]).Error; err != nil {
+		respondWithError(w, http.StatusNotFound, "Todo not found")
 		return
 	}
 
-	sendJSON(w, SuccessResponse{
-		Status:  "success",
-		Message: "Todo fetched successfully",
-		Data:    todo,
-	}, http.StatusOK)
+	respondWithJSON(w, http.StatusOK, "Todo fetched successfully", &todo)
 }
 
 // CreateTodo creates a new todo
@@ -78,10 +57,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 
 	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-		sendJSON(w, ErrorResponse{
-			Status: "error",
-			Error:  "Invalid request body",
-		}, http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
@@ -90,20 +66,14 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var existingTodo models.Todo
 	db.Where("title = ?", todo.Title).First(&existingTodo)
 	if existingTodo.ID != 0 {
-		sendJSON(w, ErrorResponse{
-			Status: "error",
-			Error:  "Todo already exists",
-		}, http.StatusOK)
+		respondWithError(w, http.StatusBadRequest, "Todo already exists")
 		return
 	}
 
-	db.Create(&todo)
-
-	sendJSON(w, SuccessResponse{
-		Status:  "success",
-		Message: "Todo created successfully",
-		Data:    todo,
-	}, http.StatusCreated)
+	if err := db.Create(&todo).Error; err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
+	respondWithJSON(w, http.StatusCreated, "Todo created successfully", &todo)
 }
 
 // UpdateTodo updates a todo
@@ -112,24 +82,19 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
 	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-		sendJSON(w, ErrorResponse{
-			Status: "error",
-			Error:  "Invalid request body",
-		}, http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	db := getDbContext(r)
-	if result := db.First(&todo, params["id"]); result.Error != nil {
-		sendJSONTodoNotFound(w)
+	if err := db.First(&todo, params["id"]).Error; err != nil {
+		respondWithError(w, http.StatusNotFound, "Todo not found")
 		return
 	}
-	db.Save(&todo)
+	if err := db.Save(&todo).Error; err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
 
-	sendJSON(w, SuccessResponse{
-		Status:  "success",
-		Message: "Todo updated successfully",
-		Data:    todo,
-	}, http.StatusOK)
+	respondWithJSON(w, http.StatusOK, "Todo updated successfully", &todo)
 }
 
 // toggleTodo marks a todo as completed or uncompleted
@@ -138,18 +103,16 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 	params := mux.Vars(r)
 
 	db := getDbContext(r)
-	if result := db.First(&todo, params["id"]); result.Error != nil {
-		sendJSONTodoNotFound(w)
+	if res := db.First(&todo, params["id"]); res.Error != nil {
+		respondWithError(w, http.StatusNotFound, "Todo not found")
 		return
 	}
 	todo.Completed = completed
-	db.Save(&todo)
+	if err := db.Save(&todo).Error; err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
 
-	sendJSON(w, SuccessResponse{
-		Status:  "success",
-		Message: "Todo updated successfully",
-		Data:    todo,
-	}, http.StatusOK)
+	respondWithJSON(w, http.StatusOK, "Todo updated successfully", &todo)
 }
 
 // CompleteTodo marks a todo as completed
@@ -169,31 +132,14 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 
 	db := getDbContext(r)
 	// check if todo exists
-	result := db.First(&todo, params["id"])
-	if result.Error != nil {
-		sendJSONTodoNotFound(w)
+	res := db.First(&todo, params["id"])
+	if res.Error != nil {
+		respondWithError(w, http.StatusNotFound, "Todo not found")
 		return
 	}
-	if result = result.Delete(&todo); result.Error != nil {
-		sendJSONTodoNotFound(w)
+	if err := res.Delete(&todo).Error; err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 	}
 
-	sendJSON(w, SuccessResponse{
-		Status:  "success",
-		Message: "Todo deleted successfully",
-		Data:    nil,
-	}, http.StatusOK)
-}
-
-func sendJSON(w http.ResponseWriter, data interface{}, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func sendJSONTodoNotFound(w http.ResponseWriter) {
-	sendJSON(w, ErrorResponse{
-		Status: "error",
-		Error:  "Todo not found",
-	}, http.StatusNotFound)
+	respondWithJSON(w, http.StatusOK, "Todo deleted successfully", nil)
 }
