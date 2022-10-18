@@ -103,7 +103,7 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 	params := mux.Vars(r)
 
 	db := getDbContext(r)
-	if res := db.First(&todo, params["id"]); res.Error != nil {
+	if err := db.First(&todo, params["id"]).Error; err != nil {
 		respondWithError(w, http.StatusNotFound, "Todo not found")
 		return
 	}
