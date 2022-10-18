@@ -81,13 +81,13 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 	params := mux.Vars(r)
 
-	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
 	db := getDbContext(r)
 	if err := db.First(&todo, params["id"]).Error; err != nil {
 		respondWithError(w, http.StatusNotFound, "Todo not found")
+		return
+	}
+	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	if err := db.Save(&todo).Error; err != nil {
@@ -141,5 +141,5 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 	}
 
-	respondWithJSON(w, http.StatusOK, "Todo deleted successfully", nil)
+	respondWithJSON(w, http.StatusOK, "Todo deleted successfully", &todo)
 }
