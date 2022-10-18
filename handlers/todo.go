@@ -45,7 +45,7 @@ func GetTodo(w http.ResponseWriter, r *http.Request) {
 
 	db := getDbContext(r)
 	if err := db.First(&todo, params["id"]).Error; err != nil {
-		respondWithError(w, http.StatusNotFound, "Todo not found")
+		respondWithError(w, http.StatusNotFound, "Todo not found", err)
 		return
 	}
 
@@ -57,7 +57,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 
 	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request body")
+		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
@@ -66,12 +66,12 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var existingTodo models.Todo
 	db.Where("title = ?", todo.Title).First(&existingTodo)
 	if existingTodo.ID != 0 {
-		respondWithError(w, http.StatusBadRequest, "Todo already exists")
+		respondWithError(w, http.StatusBadRequest, "Todo already exists", nil)
 		return
 	}
 
 	if err := db.Create(&todo).Error; err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		respondWithError(w, http.StatusInternalServerError, "Todo could not be created", err)
 	}
 	respondWithJSON(w, http.StatusCreated, "Todo created successfully", &todo)
 }
@@ -83,15 +83,15 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	db := getDbContext(r)
 	if err := db.First(&todo, params["id"]).Error; err != nil {
-		respondWithError(w, http.StatusNotFound, "Todo not found")
+		respondWithError(w, http.StatusNotFound, "Todo not found", err)
 		return
 	}
 	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request body")
+		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 	if err := db.Save(&todo).Error; err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		respondWithError(w, http.StatusInternalServerError, "Todo could not be updated", err)
 	}
 
 	respondWithJSON(w, http.StatusOK, "Todo updated successfully", &todo)
@@ -104,12 +104,12 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 
 	db := getDbContext(r)
 	if err := db.First(&todo, params["id"]).Error; err != nil {
-		respondWithError(w, http.StatusNotFound, "Todo not found")
+		respondWithError(w, http.StatusNotFound, "Todo not found", err)
 		return
 	}
 	todo.Completed = completed
 	if err := db.Save(&todo).Error; err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		respondWithError(w, http.StatusInternalServerError, "Todo could not be updated", err)
 	}
 
 	respondWithJSON(w, http.StatusOK, "Todo updated successfully", &todo)
@@ -134,11 +134,11 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	// check if todo exists
 	res := db.First(&todo, params["id"])
 	if res.Error != nil {
-		respondWithError(w, http.StatusNotFound, "Todo not found")
+		respondWithError(w, http.StatusNotFound, "Todo not found", res.Error)
 		return
 	}
 	if err := res.Delete(&todo).Error; err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		respondWithError(w, http.StatusInternalServerError, "Todo could not be deleted", err)
 	}
 
 	respondWithJSON(w, http.StatusOK, "Todo deleted successfully", &todo)
