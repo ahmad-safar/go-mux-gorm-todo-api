@@ -72,6 +72,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	if err := db.Create(&todo).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Todo could not be created", err)
+		return
 	}
 	respondWithJSON(w, http.StatusCreated, "Todo created successfully", &todo)
 }
@@ -92,6 +93,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := db.Save(&todo).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Todo could not be updated", err)
+		return
 	}
 
 	respondWithJSON(w, http.StatusOK, "Todo updated successfully", &todo)
@@ -110,6 +112,7 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 	todo.Completed = completed
 	if err := db.Save(&todo).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Todo could not be updated", err)
+		return
 	}
 
 	respondWithJSON(w, http.StatusOK, "Todo updated successfully", &todo)
@@ -139,6 +142,7 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := res.Delete(&todo).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Todo could not be deleted", err)
+		return
 	}
 
 	respondWithJSON(w, http.StatusOK, "Todo deleted successfully", &todo)
