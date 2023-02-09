@@ -12,13 +12,11 @@ import (
 	"gorm.io/gorm"
 )
 
-var DB *gorm.DB
-
 func main() {
-	DB = initDB()
-	r := mux.NewRouter()
+	db := initDB()
+	todo := handlers.NewTodoHandler(db)
 
-	todo := handlers.NewTodoHandler(DB)
+	r := mux.NewRouter()
 	r.HandleFunc("/todos", todo.GetTodos).Methods("GET")
 	r.HandleFunc("/todos/{id}", todo.GetTodo).Methods("GET")
 	r.HandleFunc("/todos", todo.CreateTodo).Methods("POST")

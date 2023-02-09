@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"go-mux-gorm-todo-api/models"
 	"net/http"
 
@@ -61,11 +62,10 @@ func (t *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if todo already exists
 	var existingTodo models.Todo
 	t.db.Where("title = ?", todo.Title).First(&existingTodo)
 	if existingTodo.ID != 0 {
-		respondWithError(w, http.StatusBadRequest, "Todo already exists", nil)
+		respondWithError(w, http.StatusBadRequest, "Todo already exists", errors.New("todo already exists"))
 		return
 	}
 
