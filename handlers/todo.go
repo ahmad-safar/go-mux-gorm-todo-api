@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"go-mux-gorm-todo-api/constants"
 	"go-mux-gorm-todo-api/models"
 	"net/http"
 
@@ -10,13 +9,16 @@ import (
 	"gorm.io/gorm"
 )
 
-// getDbContext returns the database context
-func getDbContext(r *http.Request) *gorm.DB {
-	return r.Context().Value(constants.DbKey{}).(*gorm.DB)
+type TodoHandler struct {
+	db *gorm.DB
+}
+
+func NewTodoHandler(db *gorm.DB) *TodoHandler {
+	return &TodoHandler{db: db}
 }
 
 // GetTodos returns all todos
-func GetTodos(w http.ResponseWriter, r *http.Request) {
+func (t *TodoHandler) GetTodos(w http.ResponseWriter, r *http.Request) {
 	var todos models.Todos
 
 	// get type of todos to return
@@ -25,26 +27,24 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 		todoType = "all"
 	}
 
-	db := getDbContext(r)
 	switch todoType {
 	case "all":
-		db.Find(&todos)
+		t.db.Find(&todos)
 	case "completed":
-		db.Where("completed = ?", true).Find(&todos)
+		t.db.Where("completed = ?", true).Find(&todos)
 	case "uncompleted":
-		db.Where("completed = ?", false).Find(&todos)
+		t.db.Where("completed = ?", false).Find(&todos)
 	}
 
 	respondWithJSON(w, http.StatusOK, "Todos fetched successfully", &todos)
 }
 
 // GetTodo returns a single todo
-func GetTodo(w http.ResponseWriter, r *http.Request) {
+func (t *TodoHandler) GetTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 	params := mux.Vars(r)
 
-	db := getDbContext(r)
-	if err := db.First(&todo, params["id"]).Error; err != nil {
+	if err := t.db.First(&todo, params["id"]).Error; err != nil {
 		respondWithError(w, http.StatusNotFound, "Todo not found", err)
 		return
 	}
@@ -53,7 +53,7 @@ func GetTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateTodo creates a new todo
-func CreateTodo(w http.ResponseWriter, r *http.Request) {
+func (t *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 
 	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
@@ -61,16 +61,15 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := getDbContext(r)
 	// check if todo already exists
 	var existingTodo models.Todo
-	db.Where("title = ?", todo.Title).First(&existingTodo)
+	t.db.Where("title = ?", todo.Title).First(&existingTodo)
 	if existingTodo.ID != 0 {
 		respondWithError(w, http.StatusBadRequest, "Todo already exists", nil)
 		return
 	}
 
-	if err := db.Create(&todo).Error; err != nil {
+	if err := t.db.Create(&todo).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Todo could not be created", err)
 		return
 	}
@@ -78,12 +77,11 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateTodo updates a todo
-func UpdateTodo(w http.ResponseWriter, r *http.Request) {
+func (t *TodoHandler) UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 	params := mux.Vars(r)
 
-	db := getDbContext(r)
-	if err := db.First(&todo, params["id"]).Error; err != nil {
+	if err := t.db.First(&todo, params["id"]).Error; err != nil {
 		respondWithError(w, http.StatusNotFound, "Todo not found", err)
 		return
 	}
@@ -91,7 +89,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
-	if err := db.Save(&todo).Error; err != nil {
+	if err := t.db.Save(&todo).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Todo could not be updated", err)
 		return
 	}
@@ -100,17 +98,16 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 // toggleTodo marks a todo as completed or uncompleted
-func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
+func (t *TodoHandler) toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 	var todo models.Todo
 	params := mux.Vars(r)
 
-	db := getDbContext(r)
-	if err := db.First(&todo, params["id"]).Error; err != nil {
+	if err := t.db.First(&todo, params["id"]).Error; err != nil {
 		respondWithError(w, http.StatusNotFound, "Todo not found", err)
 		return
 	}
 	todo.Completed = completed
-	if err := db.Save(&todo).Error; err != nil {
+	if err := t.db.Save(&todo).Error; err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Todo could not be updated", err)
 		return
 	}
@@ -119,23 +116,22 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, completed bool) {
 }
 
 // CompleteTodo marks a todo as completed
-func CompleteTodo(w http.ResponseWriter, r *http.Request) {
-	toggleTodo(w, r, true)
+func (t *TodoHandler) CompleteTodo(w http.ResponseWriter, r *http.Request) {
+	t.toggleTodo(w, r, true)
 }
 
 // UncompletedTodo marks a todo as uncompleted
-func UncompleteTodo(w http.ResponseWriter, r *http.Request) {
-	toggleTodo(w, r, false)
+func (t *TodoHandler) UncompleteTodo(w http.ResponseWriter, r *http.Request) {
+	t.toggleTodo(w, r, false)
 }
 
 // DeleteTodo deletes a todo
-func DeleteTodo(w http.ResponseWriter, r *http.Request) {
+func (t *TodoHandler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 	params := mux.Vars(r)
 
-	db := getDbContext(r)
 	// check if todo exists
-	res := db.First(&todo, params["id"])
+	res := t.db.First(&todo, params["id"])
 	if res.Error != nil {
 		respondWithError(w, http.StatusNotFound, "Todo not found", res.Error)
 		return

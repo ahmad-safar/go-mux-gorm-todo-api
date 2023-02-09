@@ -2,8 +2,6 @@ package main
 
 // use gorilla mux
 import (
-	"context"
-	"go-mux-gorm-todo-api/constants"
 	"go-mux-gorm-todo-api/handlers"
 	"go-mux-gorm-todo-api/models"
 	"log"
@@ -18,26 +16,19 @@ var DB *gorm.DB
 
 func main() {
 	DB = initDB()
-
 	r := mux.NewRouter()
-	r.Use(dbMiddleware)
-	r.HandleFunc("/todos", handlers.GetTodos).Methods("GET")
-	r.HandleFunc("/todos/{id}", handlers.GetTodo).Methods("GET")
-	r.HandleFunc("/todos", handlers.CreateTodo).Methods("POST")
-	r.HandleFunc("/todos/{id}", handlers.UpdateTodo).Methods("PUT")
-	r.HandleFunc("/todos/{id}/complete", handlers.CompleteTodo).Methods("PUT")
-	r.HandleFunc("/todos/{id}/uncomplete", handlers.UncompleteTodo).Methods("PUT")
-	r.HandleFunc("/todos/{id}", handlers.DeleteTodo).Methods("DELETE")
+
+	todo := handlers.NewTodoHandler(DB)
+	r.HandleFunc("/todos", todo.GetTodos).Methods("GET")
+	r.HandleFunc("/todos/{id}", todo.GetTodo).Methods("GET")
+	r.HandleFunc("/todos", todo.CreateTodo).Methods("POST")
+	r.HandleFunc("/todos/{id}", todo.UpdateTodo).Methods("PUT")
+	r.HandleFunc("/todos/{id}/complete", todo.CompleteTodo).Methods("PUT")
+	r.HandleFunc("/todos/{id}/uncomplete", todo.UncompleteTodo).Methods("PUT")
+	r.HandleFunc("/todos/{id}", todo.DeleteTodo).Methods("DELETE")
 
 	http.Handle("/", r)
 	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
-func dbMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), constants.DbKey{}, DB)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
 
 func initDB() *gorm.DB {
